@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dristi Mobile Pasal - Gift Spinner</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
+      /* No page scrolling: everything fits inside the visible screen. */
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        /* Dashain & Tihar palette: deep maroon into marigold gold */
+        background: linear-gradient(145deg, #7a0c0c 0%, #b8171e 28%, #e85d2f 58%, #ffb703 100%);
+        text-align: center;
+        margin: 0;
+        padding: 10px;
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
+        position: relative;
+      }
+
+      /* Corner diyas / marigolds - purely decorative, never block layout or clicks */
+      .deco {
+        position: fixed;
+        pointer-events: none;
+        font-size: clamp(26px, 5vh, 46px);
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+        z-index: 1;
+        opacity: 0.95;
+        user-select: none;
+      }
+      .deco-tl { top: 4px; left: 6px; }
+      .deco-tr { top: 4px; right: 6px; transform: scaleX(-1); }
+      .deco-bl { bottom: 4px; left: 6px; }
+      .deco-br { bottom: 4px; right: 6px; transform: scaleX(-1); }
+
+      /* Marigold garland strip across the top of the card */
+      .garland {
+        flex: 0 0 auto;
+        width: 100%;
+        font-size: clamp(14px, 2.4vh, 20px);
+        letter-spacing: 4px;
+        line-height: 1;
+        padding-bottom: 4px;
+        color: #e65100;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+
+      .container {
+        background-color: rgba(255, 252, 245, 0.95);
+        border: 3px solid #ffb703;
+        border-radius: 20px;
+        padding: 10px 16px 14px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 0 0 6px rgba(184, 23, 30, 0.35) inset;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        overflow: hidden;
+        position: relative;
+        z-index: 2;
+      }
+
+      .offer-ribbon {
+        flex: 0 0 auto;
+        display: inline-block;
+        margin: 2px 0 2px;
+        padding: 3px 18px;
+        background: linear-gradient(90deg, #b8171e, #e85d2f);
+        color: #fff;
+        border-radius: 999px;
+        font-size: clamp(0.65rem, 1.6vh, 0.95rem);
+        font-weight: bold;
+        letter-spacing: 0.5px;
+        box-shadow: 0 3px 8px rgba(184, 23, 30, 0.4);
+      }
+
+      h1 {
+        color: #b8171e;
+        margin: 0;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.12);
+        font-size: clamp(1.1rem, 3vh, 2.1rem);
+        flex: 0 0 auto;
+      }
+
+      .shop-name {
+        font-size: clamp(0.85rem, 2vh, 1.3rem);
+        color: #6d1b00;
+        margin: 2px 0 4px;
+        font-weight: bold;
+        flex: 0 0 auto;
+      }
+
+      /* The stage takes ALL remaining space; JS sizes the wheel to fill it. */
+      .stage {
+        position: relative;
+        flex: 1 1 0;
+        min-height: 0;
+        width: 100%;
+      }
+
+      .wheel-wrap {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+
+      #wheelCanvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      .pointer {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 6%;
+        height: 7%;
+        background: #b8171e;
+        clip-path: polygon(50% 100%, 0 0, 100% 0);
+        z-index: 10;
+        filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.35));
+      }
+
+      #spinBtn {
+        flex: 0 0 auto;
+        margin-top: 8px;
+        padding: 12px 45px;
+        font-size: clamp(16px, 2.6vh, 22px);
+        font-weight: bold;
+        background: linear-gradient(90deg, #b8171e, #e85d2f);
+        color: #fff;
+        border: none;
+        border-radius: 50px;
+        cursor: pointer;
+        transition: 0.3s;
+        box-shadow: 0 5px 15px rgba(184, 23, 30, 0.45);
+      }
+
+      #spinBtn:hover {
+        filter: brightness(1.08);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(184, 23, 30, 0.6);
+      }
+
+      #spinBtn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      /* Reward popup */
+      .reward-modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        background: rgba(40, 8, 0, 0.72);
+        z-index: 100;
+        backdrop-filter: blur(5px);
+      }
+
+      .reward-modal.show {
+        display: flex;
+        animation: fadeIn 0.25s ease;
+      }
+
+      .reward-card {
+        position: relative;
+        width: min(440px, 92vw);
+        max-height: 90vh;
+        overflow: auto;
+        padding: 28px 24px 24px;
+        background: #fff;
+        border-radius: 25px;
+        border: 3px solid #ffb703;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+        animation: popIn 0.35s ease;
+      }
+
+      .reward-card h2 {
+        margin: 0 0 8px;
+        color: #b8171e;
+        font-size: 1.8rem;
+      }
+
+      .reward-card p {
+        margin: 0 0 18px;
+        color: #555;
+        font-size: 1.1rem;
+      }
+
+      #rewardImage {
+        display: block;
+        width: min(300px, 75vw);
+        height: min(300px, 40vh);
+        object-fit: contain;
+        margin: 0 auto 18px;
+        border-radius: 16px;
+        background: #f5f5f5;
+      }
+
+      #rewardImage.image-error {
+        display: none;
+      }
+
+      .image-placeholder {
+        display: none;
+        width: min(300px, 75vw);
+        min-height: 180px;
+        margin: 0 auto 18px;
+        padding: 30px;
+        border-radius: 16px;
+        background: #f5f5f5;
+        color: #777;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+      }
+
+      .image-placeholder.show {
+        display: flex;
+      }
+
+      .close-btn {
+        border: none;
+        background: linear-gradient(90deg, #b8171e, #e85d2f);
+        color: white;
+        padding: 12px 30px;
+        border-radius: 30px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+
+      .close-btn:hover {
+        filter: brightness(1.08);
+      }
+
+      .close-x {
+        position: absolute;
+        top: 10px;
+        right: 14px;
+        width: 38px;
+        height: 38px;
+        border: none;
+        border-radius: 50%;
+        background: #eee;
+        color: #333;
+        font-size: 24px;
+        cursor: pointer;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      @keyframes popIn {
+        from { transform: scale(0.75); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+      }
+
+      @media (max-width: 600px) {
+        body {
+          padding: 6px;
+        }
+
+        .container {
+          padding: 6px 8px 10px;
+          border-radius: 16px;
+        }
+
+        #spinBtn {
+          padding: 10px 35px;
+        }
+
+        .deco {
+          font-size: 22px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Decorative diyas in the corners -->
+    <div class="deco deco-tl">🪔</div>
+    <div class="deco deco-tr">🪔</div>
+    <div class="deco deco-bl">🌼</div>
+    <div class="deco deco-br">🌼</div>
+
+    <div class="container">
+      <div class="garland">🌼🪔🌼🪔🌼🪔🌼🪔🌼🪔🌼🪔🌼🪔🌼🪔🌼🪔🌼🪔🌼🪔</div>
+      <span class="offer-ribbon">✨ Dashain &amp; Tihar Festive Offer ✨</span>
+      <h1>🎁 Spin the Gift Wheel 🎁</h1>
+      <div class="shop-name">Dristi Mobile Pasal Chatra</div>
+
+      <div class="stage" id="stage">
+        <div class="wheel-wrap" id="wheelWrap">
+          <div class="pointer"></div>
+          <canvas id="wheelCanvas"></canvas>
+        </div>
+      </div>
+
+      <button id="spinBtn">SPIN</button>
+    </div>
+
+    <!-- Reward popup -->
+    <div id="rewardModal" class="reward-modal">
+      <div class="reward-card">
+        <button class="close-x" id="closeX" aria-label="Close">&times;</button>
+        <h2>🎉 Congratulations! 🎉</h2>
+        <p>You won <strong id="rewardName"></strong>!</p>
+        <img id="rewardImage" src="" alt="Reward image" />
+        <div id="imagePlaceholder" class="image-placeholder">
+          Add this reward's image in the giftImages section of the code.
+        </div>
+        <button class="close-btn" id="closeBtn">CONTINUE</button>
+      </div>
+    </div>
+
+    <!-- Confetti JS (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script>
+      const stage = document.getElementById('stage');
+      const wheelWrap = document.getElementById('wheelWrap');
+      const wheelCanvas = document.getElementById('wheelCanvas');
+      const ctx = wheelCanvas.getContext('2d');
+      const spinBtn = document.getElementById('spinBtn');
+
+      const rewardModal = document.getElementById('rewardModal');
+      const rewardName = document.getElementById('rewardName');
+      const rewardImage = document.getElementById('rewardImage');
+      const imagePlaceholder = document.getElementById('imagePlaceholder');
+      const closeBtn = document.getElementById('closeBtn');
+      const closeX = document.getElementById('closeX');
+
+      const gifts = [
+        'Smart Watch',
+        'Bluetooth Speaker',
+        'EarBuds',
+        'Neck Band',
+        'Gaming Earphone',
+        'Watch',
+        'Multiboard',
+        'Wall Clock',
+        'Water Bottle',
+      ];
+
+      /* ============================================================
+         UPLOAD / ADD YOUR REWARD PICTURES HERE
+
+         1. Create a folder named "images" beside this HTML file.
+         2. Put your reward pictures inside that folder.
+         3. Change the filenames below to match your pictures.
+
+         You can also use a full image URL instead of a local path.
+         ============================================================ */
+      const giftImages = {
+        'Smart Watch': 'images/watch.jpg',
+        'Bluetooth Speaker': 'images/bluetooth-speaker.jpg',
+        'EarBuds': 'images/earbuds.jpg',
+        'Neck Band': 'images/neck-band.jpg',
+        'Gaming Earphone': 'images/gaming-earphone.jpg',
+        'Watch': 'images/plain-watch.jpg',
+        'Multiboard': 'images/multiboard.jpg',
+        'Wall Clock': 'images/wall-clock.jpg',
+        'Water Bottle': 'images/water-bottle.jpg',
+      };
+
+      // Dashain & Tihar festive palette: marigold, maroon, saffron, rani pink, gold.
+      const colors = [
+        '#F7931E',
+        '#B8171E',
+        '#FFC107',
+        '#D4145A',
+        '#8E0E00',
+        '#FF6F3C',
+        '#C98F00',
+        '#A81D3B',
+        '#E85D2F',
+      ];
+
+      const TWO_PI = Math.PI * 2;
+      const POINTER_ANGLE = -Math.PI / 2; // pointer sits at the top of the wheel
+      const arc = TWO_PI / gifts.length;
+
+      let startAngle = 0; // current rotation of the wheel (radians)
+      let isSpinning = false;
+      let spinCount = 0;
+      let wheelSize = 0; // CSS pixels
+
+      /* ------------------------------------------------------------
+         Drawing
+         ------------------------------------------------------------ */
+      function drawWheel() {
+        const size = wheelSize;
+        if (!size) return;
+
+        const dpr = window.devicePixelRatio || 1;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, size, size);
+
+        const cx = size / 2;
+        const cy = size / 2;
+        const ringWidth = Math.max(5, size * 0.012);
+        const outsideRadius = size / 2 - ringWidth / 2 - 2;
+        const insideRadius = Math.max(40, outsideRadius * 0.15);
+
+        // Slices
+        for (let i = 0; i < gifts.length; i++) {
+          const a0 = startAngle + i * arc;
+
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.arc(cx, cy, outsideRadius, a0, a0 + arc, false);
+          ctx.closePath();
+          ctx.fillStyle = colors[i % colors.length];
+          ctx.fill();
+          ctx.strokeStyle = '#fff3d6';
+          ctx.lineWidth = Math.max(2, size / 300);
+          ctx.stroke();
+
+          // Label: runs along the slice, from the rim toward the centre
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate(a0 + arc / 2);
+          ctx.fillStyle = '#fff';
+          ctx.textAlign = 'right';
+          ctx.textBaseline = 'middle';
+
+          const textEnd = outsideRadius - size * 0.03;
+          const maxTextWidth = textEnd - insideRadius - size * 0.03;
+          let fontSize = Math.max(13, Math.min(36, size * 0.05));
+          ctx.font = `bold ${fontSize}px Arial`;
+          while (ctx.measureText(gifts[i]).width > maxTextWidth && fontSize > 10) {
+            fontSize -= 1;
+            ctx.font = `bold ${fontSize}px Arial`;
+          }
+          ctx.fillText(gifts[i], textEnd, 0);
+          ctx.restore();
+        }
+
+        // Outer ring
+        ctx.beginPath();
+        ctx.arc(cx, cy, outsideRadius + ringWidth / 2 - 0.5, 0, TWO_PI);
+        ctx.strokeStyle = '#ffb703';
+        ctx.lineWidth = ringWidth;
+        ctx.stroke();
+
+        // Centre hub
+        ctx.beginPath();
+        ctx.arc(cx, cy, insideRadius, 0, TWO_PI, false);
+        ctx.fillStyle = '#fff3d6';
+        ctx.fill();
+        ctx.strokeStyle = '#b8171e';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        ctx.fillStyle = '#b8171e';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const hubFont = Math.max(10, Math.min(24, insideRadius * 0.32));
+        ctx.font = `bold ${hubFont}px Arial`;
+        ctx.fillText('Dristi Mobile', cx, cy - hubFont * 0.6);
+        ctx.fillText('Pasal Chatra', cx, cy + hubFont * 0.7);
+      }
+
+      /* ------------------------------------------------------------
+         Sizing: make the wheel as large as the free space allows,
+         so the whole page fits on screen with no scrolling.
+         ------------------------------------------------------------ */
+      function resizeWheel() {
+        const box = stage.getBoundingClientRect();
+        const size = Math.max(200, Math.floor(Math.min(box.width, box.height)));
+        const dpr = window.devicePixelRatio || 1;
+
+        wheelSize = size;
+        wheelWrap.style.width = `${size}px`;
+        wheelWrap.style.height = `${size}px`;
+        wheelCanvas.width = Math.round(size * dpr);
+        wheelCanvas.height = Math.round(size * dpr);
+
+        drawWheel();
+      }
+
+      window.addEventListener('resize', resizeWheel);
+      if (window.ResizeObserver) new ResizeObserver(resizeWheel).observe(stage);
+
+      /* ------------------------------------------------------------
+         Which slice is under the pointer right now?
+         The reward popup uses THIS, so the popup and the wheel can
+         never disagree.
+         ------------------------------------------------------------ */
+      function indexAtPointer() {
+        let a = (POINTER_ANGLE - startAngle) % TWO_PI;
+        if (a < 0) a += TWO_PI;
+        return Math.floor(a / arc) % gifts.length;
+      }
+
+      /* ------------------------------------------------------------
+         Prize selection (weights unchanged)
+         ------------------------------------------------------------ */
+      function chooseGiftIndex() {
+        // Names must exactly match the gifts array above.
+        const special = ['Gaming Earphone', 'Multiboard'];
+        const specialShare = spinCount <= 10 ? 0.8 : 0.5;
+        const weights = gifts.map((gift) =>
+          special.includes(gift)
+            ? specialShare / special.length
+            : (1 - specialShare) / (gifts.length - special.length)
+        );
+
+        const r = Math.random();
+        let cumulative = 0;
+        for (let i = 0; i < gifts.length; i++) {
+          cumulative += weights[i];
+          if (r <= cumulative) return i;
+        }
+        return gifts.length - 1;
+      }
+
+      /* ------------------------------------------------------------
+         Spinning: the prize is chosen FIRST, then the wheel is
+         animated so that exact slice stops under the pointer.
+         ------------------------------------------------------------ */
+      function spin() {
+        if (isSpinning) return;
+
+        spinCount++;
+        const targetIndex = chooseGiftIndex();
+
+        // Land somewhere inside the chosen slice (not on the divider line).
+        const jitter = (Math.random() - 0.5) * arc * 0.6;
+        const targetAngle = POINTER_ANGLE - (targetIndex + 0.5) * arc + jitter;
+
+        let delta = (targetAngle - startAngle) % TWO_PI;
+        if (delta <= 0) delta += TWO_PI;
+        delta += TWO_PI * (5 + Math.floor(Math.random() * 3)); // 5-7 extra full turns
+
+        const from = startAngle;
+        const duration = 4500 + Math.random() * 2500;
+        const t0 = performance.now();
+
+        isSpinning = true;
+        spinBtn.disabled = true;
+
+        function frame(now) {
+          const t = Math.min(1, (now - t0) / duration);
+          const eased = 1 - Math.pow(1 - t, 4); // fast start, smooth slow stop
+          startAngle = from + delta * eased;
+          drawWheel();
+
+          if (t < 1) {
+            requestAnimationFrame(frame);
+          } else {
+            finishSpin();
+          }
+        }
+        requestAnimationFrame(frame);
+      }
+
+      function finishSpin() {
+        isSpinning = false;
+        spinBtn.disabled = false;
+
+        // Read the winner straight from where the wheel actually stopped.
+        showReward(gifts[indexAtPointer()]);
+
+        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+        setTimeout(() => {
+          confetti({ particleCount: 100, angle: 60, spread: 55, origin: { x: 0 } });
+          confetti({ particleCount: 100, angle: 120, spread: 55, origin: { x: 1 } });
+        }, 300);
+      }
+
+      spinBtn.addEventListener('click', spin);
+
+      /* ------------------------------------------------------------
+         Reward popup
+         ------------------------------------------------------------ */
+      function showReward(gift) {
+        rewardName.textContent = gift;
+        imagePlaceholder.classList.remove('show');
+        rewardImage.classList.remove('image-error');
+
+        const imagePath = giftImages[gift];
+
+        if (imagePath) {
+          rewardImage.src = imagePath;
+          rewardImage.alt = gift;
+        } else {
+          rewardImage.classList.add('image-error');
+          imagePlaceholder.classList.add('show');
+        }
+
+        rewardModal.classList.add('show');
+      }
+
+      rewardImage.addEventListener('error', () => {
+        rewardImage.classList.add('image-error');
+        imagePlaceholder.classList.add('show');
+      });
+
+      function closeReward() {
+        rewardModal.classList.remove('show');
+      }
+
+      closeBtn.addEventListener('click', closeReward);
+      closeX.addEventListener('click', closeReward);
+
+      rewardModal.addEventListener('click', (event) => {
+        if (event.target === rewardModal) closeReward();
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closeReward();
+      });
+
+      resizeWheel();
+    </script>
+  </body>
+</html>
